@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
 from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 import os
@@ -62,12 +63,10 @@ async def analyze_place(data: PlaceData):
         # 🛡️ THE FIX: Agar AI ne reject kiya, toh 403 error bhej rahe hain
         if not result["isApproved"]:
             print(f"🛑 REJECTED: {result['reason']}")
-            raise HTTPException(status_code=403, detail=result["reason"])
+            return JSONResponse(status_code=403, content=result)
             
         print("✅ APPROVED")
         return result
-    except HTTPException:
-        raise # Isse FastAPI ka status code sahi jayega
     except Exception as e:
         print("❌ AI Error:", e)
         return {"isApproved": True, "reason": "System Error Fallback", "hashtags": []}

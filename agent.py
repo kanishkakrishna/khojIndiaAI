@@ -8,6 +8,7 @@ from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
+from fastapi.responses import JSONResponse
 
 # Custom tools
 from tools.weather_tool import get_weather
@@ -62,7 +63,11 @@ CRITICAL RULES:
 1. GEO-FENCE: Trips must originate and end WITHIN INDIA. 
 2. DURATION LIMIT: Maximum trip duration is 4 DAYS. If a user asks for more (e.g., 10 days), ONLY provide a 4-day itinerary.
 3. TIPS LIMIT: Provide EXACTLY 3 bullet points in the 'tips' array. No more, no less.
-4. OUTPUT FORMAT: Return ONLY raw JSON. Do not add markdown backticks.
+4. You MUST ALWAYS use the 'search_hidden_gems' tool first to find a destination based on the user's query.
+5. NEVER suggest globally or nationally famous places (like Bodh Gaya, Taj Mahal) from your own knowledge. 
+6. You must ONLY build the itinerary around the places returned by the 'search_hidden_gems' tool.
+7. If the database tool returns no results, do NOT make up a trip. Instead, return a JSON with a polite message in the 'tips' or 'destination' saying no hidden gem was found.
+8. OUTPUT FORMAT: Return ONLY raw JSON. Do not add markdown backticks.
 Schema: {{'title': '...', 'destination': '...', 'weather': '...', 'route': '...', 'itinerary': [{{'day': 1, 'activity': '...'}}], 'tips': ['tip1', 'tip2', 'tip3']}}"""),
         ("human", "{input}"),
         ("placeholder", "{agent_scratchpad}"),

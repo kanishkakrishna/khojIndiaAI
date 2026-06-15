@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 # Dono routers ko ek saath import karo
 from places import router as places_router
 from agent import router as agent_router

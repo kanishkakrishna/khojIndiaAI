@@ -6,6 +6,13 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 load_dotenv()
 
+# =======================================================
+# THE FIX: Global Connection (Fast & Bug-Free)
+# =======================================================
+mongo_client = MongoClient(os.getenv("MONGO_URI"))
+db = mongo_client[os.getenv("DB_NAME", "khojindia")]
+collection = db[os.getenv("COLLECTION_NAME", "Sthan")]
+
 @tool
 def search_hidden_gems(query: str) -> str:
     """
@@ -13,21 +20,15 @@ def search_hidden_gems(query: str) -> str:
     Use this tool to find destinations, waterfalls, treks, or secret spots matching the user's vibe.
     """
     try:
-        # Connect to MongoDB
-        client = MongoClient(os.getenv("MONGO_URI"))
-        db = client[os.getenv("DB_NAME")]
-        collection = db[os.getenv("COLLECTION_NAME")]
-
-        # HUM TERA WALA TARIQA USE KARENGE YAHAN! 🔥
+        # Vector Embeddings
         embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001") 
-        
         query_vector = embeddings.embed_query(query)
 
         # Vector Search Pipeline
         pipeline = [
             {
                 "$vectorSearch": {
-                    "index": os.getenv("VECTOR_INDEX_NAME"),
+                    "index": os.getenv("VECTOR_INDEX_NAME", "vector_index"),
                     "path": "embedding",
                     "queryVector": query_vector,
                     "numCandidates": 100,
@@ -67,5 +68,3 @@ def search_hidden_gems(query: str) -> str:
 
     except Exception as e:
         return f"Database search fail ho gaya: {str(e)}"
-    finally:
-        client.close()
