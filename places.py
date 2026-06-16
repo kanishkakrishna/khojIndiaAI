@@ -120,7 +120,7 @@ async def check_duplicate(data: DuplicateCheckData):
         ]
         
         results = list(collection.aggregate(pipeline))
-        if results and results[0].get('score', 0) > 0.85:
+        if results and results[0].get('score', 0) > 0.95:
             # 🛡️ THE FIX: .get() use kiya. Agar 'localName' hoga toh wo uthayega, nahi toh 'name', warna default text dega.
             duplicate_name = results[0].get('localName') or results[0].get('name') or "Unknown Place"
             
