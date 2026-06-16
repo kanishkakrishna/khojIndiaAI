@@ -115,12 +115,16 @@ async def check_duplicate(data: DuplicateCheckData):
         
         pipeline = [
             {"$vectorSearch": {"index": "vector_index", "path": "embedding", "queryVector": new_vector, "numCandidates": 10, "limit": 1}},
-            {"$project": {"name": 1, "score": {"$meta": "vectorSearchScore"}}}
+            # 📝 FIX: localName aur name dono ko DB se uthaya taaki code error na de
+            {"$project": {"name": 1, "localName": 1, "score": {"$meta": "vectorSearchScore"}}}
         ]
         
         results = list(collection.aggregate(pipeline))
         if results and results[0].get('score', 0) > 0.85:
-            return {"status": "REJECT", "message": "Clone Pakda Gaya!", "duplicate_of": results[0]['name']}
+            # 🛡️ THE FIX: .get() use kiya. Agar 'localName' hoga toh wo uthayega, nahi toh 'name', warna default text dega.
+            duplicate_name = results[0].get('localName') or results[0].get('name') or "Unknown Place"
+            
+            return {"status": "REJECT", "message": "Clone Pakda Gaya!", "duplicate_of": duplicate_name}
         
         return {"status": "ACCEPT", "new_vector": new_vector}
     except Exception as e:
