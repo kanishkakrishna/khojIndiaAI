@@ -12,7 +12,7 @@ load_dotenv()
 router = APIRouter()
 
 # =====================================================================
-# 🗄️ MONGODB SETUP
+# MONGODB SETUP
 # =====================================================================
 MONGO_URI = os.getenv("MONGO_URI") 
 client = pymongo.MongoClient(MONGO_URI)
@@ -20,22 +20,22 @@ db = client["khojindia"]
 collection = db["Sthan"] 
 
 # =====================================================================
-# 🧠 AI & EMBEDDING SETUP (Async support)
+# AI AND EMBEDDING SETUP
 # =====================================================================
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001") 
 
-# Embedding generation ko async banaya
+# Generate embeddings asynchronously to avoid blocking the request loop.
 async def generate_place_embedding(name: str, state: str, description: str, photo_tags: list):
     tags_string = ", ".join(photo_tags)
     smart_string = f"Place Name: {name}. Location: {state}. Description: {description}. Visual Vibes: {tags_string}."
     print(f"Generating vector for: {name}...")
-    # ✅ NAYA: await aur aembed_query use kiya
+    # Use the asynchronous embedding API.
     vector = await embeddings.aembed_query(smart_string)
     return vector
 
 # =====================================================================
-# 🛑 PHASE 1: THE AI BOUNCER (Updated for React Toast)
+# PHASE 1: AI BOUNCER
 # =====================================================================
 class PlaceData(BaseModel):
     localName: str
@@ -56,11 +56,11 @@ async def analyze_place(data: PlaceData):
     prompt = f"Analyze this submission for 'KhojIndia' (Hidden Gems): Name: {data.localName}, Location: {data.district}, {data.state}, Description: {data.description}"
     
     try:
-        # ✅ NAYA: invoke ki jagah ainvoke (Non-blocking)
+        # Invoke the structured-output model asynchronously.
         decision: BouncerDecision = await strict_bouncer_llm.ainvoke(prompt)
         result = decision.model_dump()
         
-        # 🛡️ THE FIX: Agar AI ne reject kiya, toh 403 error bhej rahe hain
+        # Return a 403 response when the submission is rejected.
         if not result["isApproved"]:
             print(f"🛑 REJECTED: {result['reason']}")
             return JSONResponse(status_code=403, content=result)
@@ -72,7 +72,7 @@ async def analyze_place(data: PlaceData):
         return {"isApproved": True, "reason": "System Error Fallback", "hashtags": []}
 
 # =====================================================================
-# 🚀 PHASE 2: AI VIBE CHECKER (Async)
+# PHASE 2: AI VIBE CHECKER
 # =====================================================================
 class ReviewList(BaseModel):
     reviews: List[str]
@@ -91,7 +91,7 @@ async def summarize_reviews(data: ReviewList):
         print(f"🧠 Summarizing {len(data.reviews)} reviews...")
         prompt = f"Generate 2-sentence Vibe Summary for: {data.reviews}"
         
-        # ✅ NAYA: await ainvoke
+        # Generate the vibe summary asynchronously.
         decision: VibeResponse = await strict_vibe_llm.ainvoke(prompt)
         return decision.model_dump()
     except Exception as e:
@@ -99,7 +99,7 @@ async def summarize_reviews(data: ReviewList):
         return {"vibe": "AI is taking a nap. Read reviews below!"}
 
 # =====================================================================
-# ⚔️ PHASE 3: THE CLONE HUNTER (Async)
+# PHASE 3: CLONE HUNTER
 # =====================================================================
 class DuplicateCheckData(BaseModel):
     name: str
@@ -110,18 +110,18 @@ class DuplicateCheckData(BaseModel):
 @router.post("/api/check-duplicate")
 async def check_duplicate(data: DuplicateCheckData):
     try:
-        # ✅ NAYA: await lagaya
+        # Generate the candidate embedding asynchronously.
         new_vector = await generate_place_embedding(data.name, data.state, data.description, data.photo_tags)
         
         pipeline = [
             {"$vectorSearch": {"index": "vector_index", "path": "embedding", "queryVector": new_vector, "numCandidates": 10, "limit": 1}},
-            # 📝 FIX: localName aur name dono ko DB se uthaya taaki code error na de
+            # Project both legacy and current name fields for compatibility.
             {"$project": {"name": 1, "localName": 1, "score": {"$meta": "vectorSearchScore"}}}
         ]
         
         results = list(collection.aggregate(pipeline))
         if results and results[0].get('score', 0) > 0.95:
-            # 🛡️ THE FIX: .get() use kiya. Agar 'localName' hoga toh wo uthayega, nahi toh 'name', warna default text dega.
+            # Prefer localName, then name, and fall back to a safe label.
             duplicate_name = results[0].get('localName') or results[0].get('name') or "Unknown Place"
             
             return {"status": "REJECT", "message": "Clone Pakda Gaya!", "duplicate_of": duplicate_name}

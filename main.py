@@ -1,26 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-# Dono routers ko ek saath import karo
+# Import the API router.
 from places import router as places_router
 
 app = FastAPI(title="KhojIndia API Engine")
 
 # =====================================================================
-# 🛡️ CORS MIDDLEWARE (Isse lagane se 'Blocked' errors nahi aayenge)
+# CORS MIDDLEWARE
 # =====================================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Sabhi origins (React, Mobile, etc.) ko allow karo
+    allow_origins=["*"], # Allow requests from all origins, including web and mobile clients.
     allow_credentials=True,
-    allow_methods=["*"], # GET, POST, etc. sab allow
+    allow_methods=["*"], # Allow all HTTP methods.
     allow_headers=["*"],
 )
 
 # =====================================================================
-# 🚀 ROUTERS REGISTRATION
+# ROUTER REGISTRATION
 # =====================================================================
-# Sabhi connections yahan se honge
+# Register all place-related API routes.
 app.include_router(places_router, tags=["Places"])
 
 @app.get("/")
